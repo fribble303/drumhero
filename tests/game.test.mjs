@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ScoreEngine, comboMultiplier, lanesForLevel, starsFor, KEY_LANES, LANES, filterNotesForLevel } from '../js/game.js';
+import { ScoreEngine, comboMultiplier, lanesForLevel, starsFor, KEY_LANES, LANES, filterNotesForLevel, shouldDropAsClick } from '../js/game.js';
 import * as store from '../js/store.js';
 
 const mk = (notes, opts = {}, load = {}) => new ScoreEngine(opts).load(notes, load);
@@ -212,4 +212,15 @@ test('store falls back to memory without IndexedDB', async () => {
   await store.deleteSong('a1');
   assert.equal((await store.listSongs()).length, 0);
   assert.equal((await store.getScores('a1')).length, 0);
+});
+
+test('shouldDropAsClick: only lane-less hits on a click with a trained kit', () => {
+  const clicks = [1.0, 1.5, 2.0];
+  assert.equal(shouldDropAsClick({ time: 1.01, lane: null }, clicks, 3), true);
+  assert.equal(shouldDropAsClick({ time: 1.01, lane: 'snare' }, clicks, 3), false);
+  assert.equal(shouldDropAsClick({ time: 1.01, lane: null }, clicks, 0), false);
+  assert.equal(shouldDropAsClick({ time: 1.01, lane: null }, clicks, 1), false);
+  assert.equal(shouldDropAsClick({ time: 1.25, lane: null }, clicks, 3), false);
+  assert.equal(shouldDropAsClick({ time: 1.034, lane: undefined }, clicks, 2), true);
+  assert.equal(shouldDropAsClick({ time: 1.036, lane: null }, clicks, 2), false);
 });

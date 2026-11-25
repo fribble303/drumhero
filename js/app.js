@@ -24,6 +24,7 @@ function h(tag, props, ...kids) {
 }
 
 function lsGet(k, d) { try { const v = localStorage.getItem('dh.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }
+const NO_PREF = Symbol('no-pref');
 function lsSet(k, v) { try { localStorage.setItem('dh.' + k, JSON.stringify(v)); } catch { /* ignore */ } }
 
 let toastTimer = 0;
@@ -223,12 +224,12 @@ function renderHomePanel() {
   p.append(content);
   content.append(
     h('div', null, h('h2', null, c.title), h('p', { class: 'muted small-text' }, describe(c) + (c.audioId ? ' · plays the song' : ' · click track'))),
+    h('button', { class: 'btn small ' + (S.mic ? 'on' : (S.hasProfile ? '' : 'ghost')), 'aria-pressed': String(!!S.mic), onclick: () => { S.mic = !S.mic; lsSet('mic', S.mic); renderHomePanel(); } }, S.mic ? '\u{1F3A4} Mic ON: listening to drums' : '\u{1F3A4} Mic OFF: taps only'),
     h('div', null, h('div', { class: 'label' }, 'Level'), seg(Object.entries(LEVELS).map(([k, v]) => [Number(k), v.name, v.blurb]), S.level, (v) => { S.level = v; lsSet('level', v); renderHomePanel(); })),
     h('div', { class: 'lane-chips' }, lanes.map(laneChip)),
     h('div', null, h('div', { class: 'label' }, 'Speed'), seg([[0.5, '50%', 'slow'], [0.75, '75%', 'medium'], [1, '100%', 'full']], S.speed, (v) => { S.speed = v; lsSet('speed', v); renderHomePanel(); })),
-    h('div', { class: 'row' },
-      h('button', { class: 'btn small ' + (S.mic ? 'on' : 'ghost'), onclick: () => { S.mic = !S.mic; lsSet('mic', S.mic); renderHomePanel(); } }, S.mic ? 'Mic: listening' : 'Mic: off (use taps)'),
-      c.audioId ? h('button', { class: 'btn small ' + (S.click ? 'on' : 'ghost'), onclick: () => { S.click = !S.click; lsSet('click', S.click); renderHomePanel(); } }, S.click ? 'Click: on' : 'Click: off') : null),
+    c.audioId ? h('div', { class: 'row' },
+      h('button', { class: 'btn small ' + (S.click ? 'on' : 'ghost'), onclick: () => { S.click = !S.click; lsSet('click', S.click); renderHomePanel(); } }, S.click ? 'Click: on' : 'Click: off')) : null,
     S.best[c.id] ? h('p', { class: 'small-text muted' }, `Best: ${S.best[c.id].score} points, `, stars(S.best[c.id].stars)) : null);
   p.append(h('button', { class: 'btn big green', style: 'flex:none', onclick: () => startPlay() }, 'PLAY'));
 }
@@ -527,6 +528,7 @@ function renderCalibrate() {
   const needMic = () => h('div', { class: 'note warn' }, 'The microphone is off, so this step does nothing. You can still play with taps and the keyboard. ', h('button', { class: 'btn small', onclick: () => { cal.step = 0; renderCalibrate(); } }, 'Turn on mic'));
   const next = (label = 'Next') => h('button', { class: 'btn big green', onclick: () => { cal.step++; renderCalibrate(); } }, label);
   const finish = async () => {
+    if (S.listener) { S.mic = true; lsSet('mic', true); S.hasProfile = true; }
     try { if (S.listener) await store.saveProfile(S.listener.getProfile()); toast('Saved!'); } catch { toast('Could not save your setup, but it works for now.'); }
     goHome();
   };
@@ -541,6 +543,7 @@ function renderCalibrate() {
       on.disabled = true;
       const L = await startMic(true);
       if (!L) { on.disabled = false; status.textContent = 'The mic did not start. Allow the microphone for this page, or skip and play with taps.'; toast(micMessage(S.listenerError || { name: 'NotAllowedError' }), 5000); return; }
+      S.mic = true; lsSet('mic', true);
       status.textContent = 'Microphone is on. Bang a drum and watch the bar.';
       calCleanup(); hookMeter();
       on.textContent = 'Mic is on'; on.disabled = true;
@@ -823,6 +826,15 @@ async function boot() {
   renderHome();
   await refreshSongs();
   if (S.screen === 'home') renderHome();
+  try {
+    const prof = await store.getProfile();
+    if (prof) {
+      S.hasProfile = true;
+      // No stored preference at all + a saved calibration: default the mic on. An explicit stored false is respected.
+      if (lsGet('mic', NO_PREF) === NO_PREF) { S.mic = true; }
+      if (S.screen === 'home') renderHomePanel();
+    }
+  } catch { /* storage unavailable */ }
 }
 window.__drumHero = S; // debug/test hook
 boot();

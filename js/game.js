@@ -33,6 +33,17 @@ export function comboMultiplier(combo) {
   return combo >= 50 ? 4 : combo >= 25 ? 3 : combo >= 10 ? 2 : 1;
 }
 
+/**
+ * With a trained kit, a real drum hit gets a lane. An unrecognised (lane-less) sound that lands
+ * right on a metronome click is the click bleeding from the phone speaker, so drop it.
+ * Timing-only mode (fewer than 2 trained lanes) never drops.
+ */
+export function shouldDropAsClick(hit, clickTimes, trainedCount, window = 0.035) {
+  if (!hit || hit.lane != null || !(trainedCount >= 2)) return false;
+  for (const x of clickTimes) if (Math.abs(x - hit.time) < window) return true;
+  return false;
+}
+
 /** Lanes drawn for a level, in LANES order. Level 3 (and unused-lane trimming) uses what the chart contains. */
 export function lanesForLevel(level, notes = []) {
   const used = new Set(notes.map((n) => n.lane));
@@ -534,6 +545,17 @@ export class Highway {
     c.textAlign = 'right'; c.fillText('early', mx - 6, my);
     c.textAlign = 'left'; c.fillText('late', mx + mw + 6, my);
 
+    // mic indicator: pulses on every listener hit (right of the timing meter)
+    {
+      const ix = mx + mw + 56, on = !!hud.mic;
+      const pulse = on ? Math.max(0, 1 - (now - (hud.micT || -1e9)) / 150) : 0;
+      c.textAlign = 'left';
+      c.font = `800 11px ${FONT}`;
+      c.fillStyle = on ? `rgba(124,255,107,${0.55 + 0.45 * pulse})` : 'rgba(255,255,255,0.3)';
+      c.beginPath(); c.arc(ix, my, 3 + 2.5 * pulse, 0, 6.2832); c.fill();
+      c.fillText(on ? 'MIC' : 'TAPS', ix + 10, my);
+    }
+
     // count-in / GO
     if (hud.countIn) {
       c.textAlign = 'center';
@@ -577,7 +599,8 @@ export class Game {
     this.endT = last + 1.2;
     this.firstT = this.engine.notes.length ? this.engine.notes[0].t : 0;
     this.state = 'ready';
-    this.hud = { score: 0, combo: 0, mult: 1, accuracy: 100, progress: 0, countIn: null };
+    this.hud = { score: 0, combo: 0, mult: 1, accuracy: 100, progress: 0, countIn: null, mic: !!listener, micT: -Infinity };
+    this._trained = 0;
     this.clickTimes = [];
     this._lc = -1; this._lp = 0; this._last = -Infinity;
   }
@@ -616,10 +639,12 @@ export class Game {
     this.timer = setInterval(() => this._sched(), 25);
     this._sched();
     if (this.listener) {
-      this.unsub = this.listener.onHit((h) => this._hit(h.time, h.lane));
-      try {
-        this.listener.setReferenceGate?.((t) => this.clickTimes.some((x) => Math.abs(x - t) < 0.03));
-      } catch { /* optional */ }
+      try { this._trained = this.listener.trainedLanes?.().length || 0; } catch { this._trained = 0; }
+      this.unsub = this.listener.onHit((h) => {
+        this.hud.micT = performance.now();
+        if (shouldDropAsClick(h, this.clickTimes, this._trained)) return;
+        this._hit(h.time, h.lane);
+      });
     }
     this.state = 'playing';
     this._loop = () => this._frame();
@@ -636,7 +661,7 @@ export class Game {
       if (when >= ctx.currentTime - 0.01 && (this._nextBeat < 0 || this.metronome)) {
         this._click(when, (((this._nextBeat % bpb) + bpb) % bpb) === 0);
         this.clickTimes.push(when);
-        if (this.clickTimes.length > 8) this.clickTimes.shift();
+        if (this.clickTimes.length > 16) this.clickTimes.shift();
       }
       this._nextBeat++;
     }

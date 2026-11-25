@@ -35,7 +35,7 @@ function pat(id, name, level, steps, extra = {}) {
 const EIGHTHS = [0, 2, 4, 6, 8, 10, 12, 14];
 
 export const PATTERNS = [
-  pat('kick-snare-quarters', 'Kick and snare (quarter notes)', 1, {
+  pat('kick-snare-quarters', 'Bass drum and snare (quarter notes)', 1, {
     kick: [0, 8], snare: [4, 12],
   }),
   pat('quarter-rock', 'Quarter-note rock', 1, {
@@ -50,7 +50,7 @@ export const PATTERNS = [
   pat('half-time', 'Half-time groove', 2, {
     hihat: EIGHTHS, kick: [0], snare: [8],
   }),
-  pat('rock-kick-variation', 'Rock with a bouncy kick', 2, {
+  pat('rock-kick-variation', 'Rock with a bouncy bass drum', 2, {
     hihat: EIGHTHS, kick: [0, 6, 8], snare: [4, 12],
   }),
   pat('sixteenth-hat-rock', '16th-note hi-hat rock', 3, {
@@ -290,12 +290,12 @@ const same = (groove) => () => ({ groove });
 const withFill = (groove, every, fill) => (b) => (b % every === 0 ? { groove, fill } : { groove });
 
 export const BUILTIN_LESSONS = [
-  { n: 1, title: 'Boom Tick Starter', bpm: 60, desc: 'Just kick on 1 and 3, snare on 2 and 4.', bar: same('kick-snare-quarters') },
+  { n: 1, title: 'Boom Tick Starter', bpm: 60, desc: 'Just bass drum on 1 and 3, snare on 2 and 4.', bar: same('kick-snare-quarters') },
   { n: 2, title: 'Hat Walk', bpm: 66, desc: 'Add the hi-hat on every beat.', bar: same('quarter-rock') },
   { n: 3, title: 'Eight Is Great', bpm: 70, desc: 'Hi-hat on every 8th note: the classic rock beat.', bar: same('eighth-rock') },
-  { n: 4, title: 'Pump It Up', bpm: 76, desc: 'Kick on every beat, hi-hat in between.', bar: same('four-on-the-floor') },
+  { n: 4, title: 'Pump It Up', bpm: 76, desc: 'Bass drum on every beat, hi-hat in between.', bar: same('four-on-the-floor') },
   { n: 5, title: 'Big Slow Stomp', bpm: 80, desc: 'Half-time: the snare waits until beat 3.', bar: same('half-time') },
-  { n: 6, title: 'Bouncy Kick', bpm: 84, desc: 'Rock beat with an extra kick before beat 3.', bar: same('rock-kick-variation') },
+  { n: 6, title: 'Bouncy Bass Drum', bpm: 84, desc: 'Rock beat with an extra bass drum before beat 3.', bar: same('rock-kick-variation') },
   { n: 7, title: 'Skippy Shuffle', bpm: 88, desc: 'Triplet feel: long-short, long-short.', bar: same('shuffle') },
   { n: 8, title: 'Speedy Hats', bpm: 80, desc: 'Hi-hat on every 16th note.', bar: same('sixteenth-hat-rock') },
   {

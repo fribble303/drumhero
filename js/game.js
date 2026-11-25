@@ -11,15 +11,15 @@ export const LANE_INFO = {
   tom1:  { label: 'TOM 1',  color: '#B070FF', key: 'f', shape: 'circle' },
   snare: { label: 'SNARE',  color: '#FF4FA3', key: 'j', shape: 'circle' },
   tom2:  { label: 'TOM 2',  color: '#4F7BFF', key: 'k', shape: 'circle' },
-  floor: { label: 'FLOOR',  color: '#2EE59D', key: 'l', shape: 'circle' },
-  kick:  { label: 'KICK',   color: '#FF4B4B', key: ';', shape: 'bar' },
+  floor: { label: 'HI-HAT PEDAL', color: '#2EE59D', key: 'l', shape: 'circle' },
+  kick:  { label: 'BASS DRUM', color: '#FF4B4B', key: ';', shape: 'bar' },
 };
 
 /** keyboard key -> lane (a s d f j k l ; in LANES order) */
 export const KEY_LANES = Object.fromEntries(LANES.map((l) => [LANE_INFO[l].key, l]));
 
 export const LEVELS = {
-  1: { name: 'Starter', blurb: 'Kick, snare, hat' },
+  1: { name: 'Starter', blurb: 'Bass drum, snare, hat' },
   2: { name: 'Groove', blurb: '+ crash' },
   3: { name: 'Full', blurb: 'Every drum' },
 };
@@ -421,8 +421,22 @@ export class Highway {
       c.fill();
       if (lit > 0) { c.fillStyle = `rgba(255,255,255,${lit * 0.7})`; c.fill(); }
       c.fillStyle = '#1a1030';
-      c.fillText(info.label, this.left + this.labelW / 2 - 7, y);
-      c.font = `800 ${Math.max(9, fs - 4)}px ${FONT}`;
+      // Fit the label between the pill's left edge and the keyboard-hint letter: shrink the font, then wrap to two lines.
+      const hintFs = Math.max(9, fs - 4);
+      const tl = this.left + 14, tr = this.left + this.labelW - 17 - hintFs * 0.5 - 5, tw = tr - tl, tx = (tl + tr) / 2;
+      let lfs = fs;
+      c.font = `800 ${lfs}px ${FONT}`;
+      while (lfs > 9 && c.measureText(info.label).width > tw) { lfs -= 0.5; c.font = `800 ${lfs}px ${FONT}`; }
+      const words = info.label.split(' ');
+      if (c.measureText(info.label).width > tw && words.length > 1 && ph >= 26) {
+        lfs = Math.min(fs, (ph - 6) / 2.2);
+        const widest = () => Math.max(...words.map((wd) => c.measureText(wd).width));
+        c.font = `800 ${lfs}px ${FONT}`;
+        while (lfs > 6 && widest() > tw) { lfs -= 0.5; c.font = `800 ${lfs}px ${FONT}`; }
+        c.fillText(words[0], tx, y - lfs * 0.55);
+        c.fillText(words.slice(1).join(' '), tx, y + lfs * 0.55);
+      } else c.fillText(info.label, tx, y);
+      c.font = `800 ${hintFs}px ${FONT}`;
       c.fillStyle = 'rgba(26,16,48,0.55)';
       c.fillText(info.key.toUpperCase(), this.left + this.labelW - 17, y);
       c.font = `800 ${fs}px ${FONT}`;
